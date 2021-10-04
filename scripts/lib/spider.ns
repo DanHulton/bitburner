@@ -1,0 +1,24 @@
+function spider(f, serversParam, depthParam, skipParam) {
+	var skipServers = skipParam ? skipParam : getPurchasedServers().concat(["home", "darkweb"]);
+	var servers = serversParam ? serversParam : scan().filter(function (server) { return ! skipServers.includes(server); });
+	var depth = depthParam ? depthParam : 0;
+
+	var spaces = "";
+	for (var i = 0; i < depth; i++) {
+		spaces += "  ";
+	}
+
+	for (var i = 0; i < servers.length; i++) {
+		var server = servers[i];
+		tprint(spaces + "# Processing " + server + ":");
+
+		f(server, spaces + "  ");
+
+		skipServers.push(server);
+
+		var scanned = scan(server).filter(function (server) { return ! skipServers.includes(server); });
+		if (scanned.length > 0) {
+			spider(f, scanned, depth + 1, skipServers);
+		}
+	}
+}

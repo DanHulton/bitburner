@@ -1,0 +1,23 @@
+var ram = 32;
+var cost = getPurchasedServerCost(ram);
+
+print("Buying " + ram + "GB servers costing " + nFormat(cost, "$0.0a"));
+
+var i = getPurchasedServers().length;
+
+while (i < getPurchasedServerLimit()) {
+	sleep(10 * 1000);
+
+    if (getServerMoneyAvailable("home") > cost) {
+        var server = purchaseServer("pserv-" + i, ram);
+
+		scp("/scripts/node/controller.script", server);
+		scp("/scripts/node/grow.script", server);
+		scp("/scripts/node/weaken.script", server);
+		scp("/scripts/node/hack.script", server);
+		exec("/scripts/node/controller.script", server);
+        ++i;
+    }
+}
+
+tprint("Purchased servers (" + i + ") equal to server limit (" + getPurchasedServerLimit() + ")!");

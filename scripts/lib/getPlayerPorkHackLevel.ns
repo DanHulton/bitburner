@@ -1,0 +1,21 @@
+export function getPlayerPortHackLevel(ns) {
+	var level = 0;
+
+	if (ns.fileExists("BruteSSH.exe")) {
+		level += 1;
+	}
+	if (ns.fileExists("FTPCrack.exe")) {
+		level += 1;
+	}
+	if (ns.fileExists("relaySMTP.exe")) {
+		level += 1;
+	}
+	if (ns.fileExists("HTTPWorm.exe")) {
+		level += 1;
+	}
+	if (ns.fileExists("SQLInject.exe")) {
+		level += 1;
+	}
+
+	return level;
+}

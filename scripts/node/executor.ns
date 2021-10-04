@@ -1,0 +1,81 @@
+var targets = ["n00dles","foodnstuff","sigma-cosmetics","zer0","phantasy","comptek","zb-institute","lexo-corp","alpha-ent","aevum-police","galactic-cyber","snap-fitness","deltaone","univ-energy","zb-def","microdyne","fulcrumtech","nwo","clarkinc","unitalife","zeus-med","infocomm","syscore","rho-construction","aerocorp","omnia","defcomm","icarus","taiyang-digital","vitalife","4sigma","nova-med","titan-labs","stormtech","omnitek","powerhouse-fitness","helios","kuai-gong","b-and-a","blade","ecorp","megacorp","applied-energetics","solaris","global-pharm","johnson-ortho","nectar-net","joesguns","hong-fang-tea","max-hardware","neo-net","crush-fitness","rothman-uni","summit-uni","millenium-fitness","omega-net","harakiri-sushi","iron-gym","silver-helix","the-hub","netlink","catalyst"];
+var hostName = getHostname();
+var freeRam = getServerMaxRam(hostName) - getServerUsedRam(hostName);
+var maxHackThreads = Math.floor(freeRam / 1.7);
+var maxWeakenThreads = Math.floor(freeRam / 1.75);
+var maxGrowThreads = Math.floor(freeRam / 1.75);
+
+print("Server free RAM: " + freeRam + "GB");
+
+function getTarget(servers) {
+	var idx = Math.floor(Math.random() * servers.length);
+	var target = { name: servers.splice(idx, 1) };
+	
+	print("\n### New target: " + target.name);
+	
+	return target;
+}
+
+function runWeaken(target) {
+	target.securityLevel = getServerSecurityLevel(target.name);
+	target.securityThreshold = getServerMinSecurityLevel(target.name) + 5;
+
+	if (target.securityLevel > target.securityThreshold) {
+		print("Security level (" + nFormat(target.securityLevel, "0,0.0") + ") higher than threshold (" + target.securityThreshold + ").");
+
+		var sleepTime = Math.ceil(getWeakenTime(target.name) + 1) * 1000;
+		print("🐭 Weakening with " + maxWeakenThreads + " threads for " + tFormat(sleepTime) + "...");
+		run("/scripts/node/weaken.script", maxWeakenThreads, target.name);
+		sleep(sleepTime);
+
+		return true;
+	}
+
+	return false;
+}
+
+function runGrow(target) {
+	target.moneyAvailable = getServerMoneyAvailable(target.name);
+	target.moneyThreshold = getServerMaxMoney(target.name) * 0.75;
+
+	if (target.moneyAvailable < target.moneyThreshold) {
+		print("Money available (" + nFormat(target.moneyAvailable, "$0.0a") + ") lower than threshold (" + nFormat(target.moneyThreshold, "$0.0a") + ").");
+
+		var sleepTime = Math.ceil(getGrowTime(target.name) + 1) * 1000;
+		print("🌱 Growing with " + maxGrowThreads + " threads for " + tFormat(sleepTime) + "...");
+		run("/scripts/node/grow.script", maxGrowThreads, target.name);
+		sleep(sleepTime);
+
+		return true;
+	}
+
+	return false;
+}
+
+function runHack(target) {
+	// Aim to hack 20% of outstanding money so that if four servers attack the same target, it's not completely wiped out.
+	var threads = Math.min(maxHackThreads, Math.floor(hackAnalyzeThreads(target.name, target.moneyAvailable * 0.2)));
+	var hackMoney = hackAnalyzePercent(target.name) / 100 * target.moneyAvailable * threads;
+	var sleepTime = Math.ceil(getHackTime(target.name) + 1) * 1000;
+	print("🤑 Hacking " + nFormat(hackMoney, "$0.0a") + " with " + threads + " threads for " + tFormat(sleepTime) + "...");
+	run("/scripts/node/hack.script", threads, target.name);
+	sleep(sleepTime);
+}
+
+while (true) {
+	var copy = [].concat(targets);
+
+	while (copy.length) {
+		var target = getTarget(copy);
+
+		if (runWeaken(target)) {
+			// no-op
+		}
+		else if (runGrow(target)) {
+			// no-op
+		}
+		else {
+			runHack(target);
+		}
+	}
+}

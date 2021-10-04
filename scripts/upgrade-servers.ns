@@ -1,0 +1,94 @@
+export async function main(ns) {
+	if (ns.args.length < 1) {
+		ns.tprint("You must specify argument: TARGET_RAM_SIZE.");
+		ns.exit();
+	}
+
+	var ramTarget = ns.args[0];
+	var ramRequired = ns.getScriptRam("/scripts/node/hack.script");
+	var serverCost = ns.getPurchasedServerCost(ramTarget);
+	var servers = ns.getPurchasedServers();
+	var serversUpgraded = 0;
+
+	ns.tprint("Upgrading all servers to " + ramTarget + "GB (" + ns.nFormat(serverCost, "$0.0a") + ")...");
+
+	var ramSizes = [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536];
+
+	var orderedServers = {
+		8: [],
+		16: [],
+		32: [],
+		64: [],
+		128: [],
+		256: [],
+		512: [],
+		1024: [],
+		2048: [],
+		4096: [],
+		8192: [],
+		16384: [],
+		32768: [],
+		65536: [],
+	};
+
+	servers.forEach(function (server) {
+		orderedServers[ns.getServerMaxRam(server)].push(server);
+	});
+
+	function upgradeServer() {
+		for (var i = 0; i < ramSizes.length; i++) {
+			var size = ramSizes[i];
+
+			if (size >= ramTarget) {
+				ns.tprint("All servers upgraded to " + ramTarget + ".");
+				ns.exit();
+			}
+
+			if (orderedServers[size].length > 0) {
+				var name = orderedServers[size].pop();
+				var oldRam = ns.getServerMaxRam(name);
+				var oldThreads = Math.floor(oldRam / ramRequired);
+				ns.tprint(name + " being upgraded from " + oldRam + "GB (" + oldThreads + " threads)...");
+
+				ns.killall(name);
+				ns.deleteServer(name);
+				ns.purchaseServer(name, ramTarget);
+
+				ns.scp("/scripts/node/controller.script", name);
+				ns.scp("/scripts/node/grow.script", name);
+				ns.scp("/scripts/node/weaken.script", name);
+				ns.scp("/scripts/node/hack.script", name);
+				ns.exec("/scripts/node/controller.script", name);
+
+				var newThreads = Math.floor(ramTarget / ramRequired);
+				ns.tprint(name + " upgraded to " + ramTarget + "GB (" + newThreads + " threads).");
+				serversUpgraded += 1;
+				return;
+			}
+		};
+	}
+
+	function getUnupgraded() {
+		var count = 0;
+		for (var i = 0; i < ramSizes.length; i++) {
+			var size = ramSizes[i];
+
+			if (size < ramTarget) {
+				count += orderedServers[size].length;
+			}
+		}
+
+		return count;
+	}
+
+	var player = ns.getPlayer();
+	var unupgraded = getUnupgraded();
+	while(player.money > serverCost && unupgraded > 0) {
+		upgradeServer();
+		player = ns.getPlayer();
+		unupgraded = getUnupgraded();
+	}
+
+	ns.tprint(serversUpgraded + " servers upgraded.");
+	ns.tprint(unupgraded + " servers not yet at target.");
+}

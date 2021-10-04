@@ -1,0 +1,8 @@
+function installScripts(server) {
+	killall(server);
+	scp("/scripts/node/controller.script", server);
+	scp("/scripts/node/grow.script", server);
+	scp("/scripts/node/weaken.script", server);
+	scp("/scripts/node/hack.script", server);
+	exec("/scripts/node/controller.script", server);
+}

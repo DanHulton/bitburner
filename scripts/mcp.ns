@@ -1,0 +1,46 @@
+import { spider } from "/scripts/lib/spider.script";
+import { installScripts } from "/scripts/lib/installScripts.script";
+import { getPlayerPortHackLevel } from "/scripts/lib/getPlayerPortHackLevel.script";
+
+var reinstall = args.includes("--reinstall");
+// var playerPortHackLevel = getPlayerPortHackLevel();;
+var controllerRam = getScriptRam("/scripts/node/controller.script");
+var instanceRam = getScriptRam("/scripts/node/weaken.script");
+var minimumRam = controllerRam + instanceRam;
+
+function isHacking(process) {
+	return process.filename == "hack.script";
+}
+
+function install(server, spaces, serverMaxRamParam) {
+	var serverMaxRam = serverMaxRamParam ? serverMaxRamParam : getServerMaxRam(server);
+	installScripts(server);
+	tprint(spaces + "- Installed at " + Math.floor((serverMaxRam - controllerRam) / instanceRam) + " instance threads.");
+}
+
+// Spider through world servers
+spider(function(server, spaces) {
+	var processes = ps(server);
+	var serverMaxRam = getServerMaxRam(server);
+
+	if (processes.some(isHacking) && ! reinstall) {
+		tprint(spaces + "- INFO: Server is already hacking, skipping installation.");
+		return;
+	}
+
+	if (serverMaxRam < minimumRam) {
+		tprint(spaces + "- INFO: Server does not have enough RAM (" + serverMaxRam + "GB/" + minimumRam + "GB).");
+		return;
+	}
+
+	install(server, spaces, serverMaxRam);
+});
+
+// Install on purchased servers
+if (reinstall) {
+	getPurchasedServers().forEach(function (server) {
+		install(server, "");
+	});
+}
+
+tprint("MCP complete.");
