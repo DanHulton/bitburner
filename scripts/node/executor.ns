@@ -1,32 +1,42 @@
-var targets = ["n00dles","foodnstuff","sigma-cosmetics","zer0","phantasy","comptek","zb-institute","lexo-corp","alpha-ent","aevum-police","galactic-cyber","snap-fitness","deltaone","univ-energy","zb-def","microdyne","fulcrumtech","nwo","clarkinc","unitalife","zeus-med","infocomm","syscore","rho-construction","aerocorp","omnia","defcomm","icarus","taiyang-digital","vitalife","4sigma","nova-med","titan-labs","stormtech","omnitek","powerhouse-fitness","helios","kuai-gong","b-and-a","blade","ecorp","megacorp","applied-energetics","solaris","global-pharm","johnson-ortho","nectar-net","joesguns","hong-fang-tea","max-hardware","neo-net","crush-fitness","rothman-uni","summit-uni","millenium-fitness","omega-net","harakiri-sushi","iron-gym","silver-helix","the-hub","netlink","catalyst"];
-var hostName = getHostname();
-var freeRam = getServerMaxRam(hostName) - getServerUsedRam(hostName);
-var maxHackThreads = Math.floor(freeRam / 1.7);
-var maxWeakenThreads = Math.floor(freeRam / 1.75);
-var maxGrowThreads = Math.floor(freeRam / 1.75);
+import { targets } from "/scripts/lib/targets.ns";
 
-print("Server free RAM: " + freeRam + "GB");
-
-function getTarget(servers) {
+/**
+ * Get a random server as a target.
+ * 
+ * @param {NetScript} ns - The Netscript environment.
+ * @param {Array<string>} servers - The servers to choose a target from.  Modified.
+ *
+ * @return {string}
+ */
+function getTarget(ns, servers) {
 	var idx = Math.floor(Math.random() * servers.length);
 	var target = { name: servers.splice(idx, 1) };
 	
-	print("\n### New target: " + target.name);
+	ns.print("\n### New target: " + target.name);
 	
 	return target;
 }
 
-function runWeaken(target) {
-	target.securityLevel = getServerSecurityLevel(target.name);
-	target.securityThreshold = getServerMinSecurityLevel(target.name) + 5;
+/**
+ * Weaken the target server's security.
+ *
+ * @param {NetScript} ns - The Netscript environment.
+ * @param {string} target - The server being weakened.
+ * @param {integer} threads - The number of threads to use.
+ *
+ * @return {boolean}
+ */
+async function runWeaken(ns, target, threads) {
+	target.securityLevel = ns.getServerSecurityLevel(target.name);
+	target.securityThreshold = ns.getServerMinSecurityLevel(target.name) + 5;
 
 	if (target.securityLevel > target.securityThreshold) {
-		print("Security level (" + nFormat(target.securityLevel, "0,0.0") + ") higher than threshold (" + target.securityThreshold + ").");
+		ns.print("Security level (" + ns.nFormat(target.securityLevel, "0,0.0") + ") higher than threshold (" + target.securityThreshold + ").");
 
-		var sleepTime = Math.ceil(getWeakenTime(target.name) + 1) * 1000;
-		print("🐭 Weakening with " + maxWeakenThreads + " threads for " + tFormat(sleepTime) + "...");
-		run("/scripts/node/weaken.script", maxWeakenThreads, target.name);
-		sleep(sleepTime);
+		var sleepTime = Math.ceil(ns.getWeakenTime(target.name) + 1) * 1000;
+		ns.print("🐭 Weakening with " + threads + " threads for " + ns.tFormat(sleepTime) + "...");
+		ns.run("/scripts/node/weaken.script", threads, target.name);
+		await ns.sleep(sleepTime);
 
 		return true;
 	}
@@ -34,17 +44,26 @@ function runWeaken(target) {
 	return false;
 }
 
-function runGrow(target) {
-	target.moneyAvailable = getServerMoneyAvailable(target.name);
-	target.moneyThreshold = getServerMaxMoney(target.name) * 0.75;
+/**
+ * Grow the target server's money.
+ *
+ * @param {NetScript} ns - The Netscript environment.
+ * @param {string} target - The server being grown.
+ * @param {integer} threads - The number of threads to use.
+ *
+ * @return {boolean}
+ */
+async function runGrow(ns, target, threads) {
+	target.moneyAvailable = ns.getServerMoneyAvailable(target.name);
+	target.moneyThreshold = ns.getServerMaxMoney(target.name) * 0.75;
 
 	if (target.moneyAvailable < target.moneyThreshold) {
-		print("Money available (" + nFormat(target.moneyAvailable, "$0.0a") + ") lower than threshold (" + nFormat(target.moneyThreshold, "$0.0a") + ").");
+		ns.print("Money available (" + ns.nFormat(target.moneyAvailable, "$0.0a") + ") lower than threshold (" + ns.nFormat(target.moneyThreshold, "$0.0a") + ").");
 
-		var sleepTime = Math.ceil(getGrowTime(target.name) + 1) * 1000;
-		print("🌱 Growing with " + maxGrowThreads + " threads for " + tFormat(sleepTime) + "...");
-		run("/scripts/node/grow.script", maxGrowThreads, target.name);
-		sleep(sleepTime);
+		var sleepTime = Math.ceil(ns.getGrowTime(target.name) + 1) * 1000;
+		ns.print("🌱 Growing with " + threads + " threads for " + ns.tFormat(sleepTime) + "...");
+		ns.run("/scripts/node/grow.script", threads, target.name);
+		await ns.sleep(sleepTime);
 
 		return true;
 	}
@@ -52,30 +71,68 @@ function runGrow(target) {
 	return false;
 }
 
-function runHack(target) {
-	// Aim to hack 20% of outstanding money so that if four servers attack the same target, it's not completely wiped out.
-	var threads = Math.min(maxHackThreads, Math.floor(hackAnalyzeThreads(target.name, target.moneyAvailable * 0.2)));
-	var hackMoney = hackAnalyzePercent(target.name) / 100 * target.moneyAvailable * threads;
-	var sleepTime = Math.ceil(getHackTime(target.name) + 1) * 1000;
-	print("🤑 Hacking " + nFormat(hackMoney, "$0.0a") + " with " + threads + " threads for " + tFormat(sleepTime) + "...");
-	run("/scripts/node/hack.script", threads, target.name);
-	sleep(sleepTime);
+/**
+ * Aim to hack 20% of outstanding money so that if four servers attack the same target, it's not completely wiped out.
+ *
+ * @param {NetScript} ns - The Netscript environment.
+ * @param {string} target - The server being hacked.
+ * @param {integer} maxHackThreads - The maximum number of threads to use.
+ *
+ * @return {boolean}
+ */
+async function runHack(ns, target, maxHackThreads) {
+	var threads = Math.min(maxHackThreads, Math.floor(ns.hackAnalyzeThreads(target.name, target.moneyAvailable * 0.2)));
+	var hackMoney = ns.hackAnalyzePercent(target.name) / 100 * target.moneyAvailable * threads;
+	var sleepTime = Math.ceil(ns.getHackTime(target.name) + 1) * 1000;
+
+	ns.print("🤑 Hacking " + ns.nFormat(hackMoney, "$0.0a") + " with " + threads + " threads for " + ns.tFormat(sleepTime) + "...");
+	ns.run("/scripts/node/hack.script", threads, target.name);
+	await ns.sleep(sleepTime);
 }
 
-while (true) {
-	var copy = [].concat(targets);
+/**
+ *	Main.
+ * 
+ * @param {NetScript} ns - The Netscript environment.
+ */
+export async function main(ns) {
 
-	while (copy.length) {
-		var target = getTarget(copy);
 
-		if (runWeaken(target)) {
-			// no-op
-		}
-		else if (runGrow(target)) {
-			// no-op
-		}
-		else {
-			runHack(target);
+
+
+
+	// while weaken/grow/hack is running
+		// wait 10s
+
+
+
+
+
+
+
+	var hostName = ns.getHostname();
+	var freeRam = ns.getServerMaxRam(hostName) - ns.getServerUsedRam(hostName);
+	var maxWeakenThreads = Math.floor(freeRam / 1.75);
+	var maxGrowThreads = Math.floor(freeRam / 1.75);
+	var maxHackThreads = Math.floor(freeRam / 1.7);
+
+	ns.print("Server free RAM: " + freeRam + "GB");
+
+	while (true) {
+		var copy = [].concat(targets);
+
+		while (copy.length) {
+			var target = getTarget(ns, copy);
+
+			if (await runWeaken(ns, target, maxWeakenThreads)) {
+				// no-op
+			}
+			else if (await runGrow(ns, target, maxGrowThreads)) {
+				// no-op
+			}
+			else {
+				await runHack(ns, target, maxHackThreads);
+			}
 		}
 	}
 }

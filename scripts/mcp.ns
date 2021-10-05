@@ -1,46 +1,51 @@
-import { spider } from "/scripts/lib/spider.script";
-import { installScripts } from "/scripts/lib/installScripts.script";
-import { getPlayerPortHackLevel } from "/scripts/lib/getPlayerPortHackLevel.script";
+import { spider } from "/scripts/lib/spider.ns";
+import { installScripts } from "/scripts/lib/installScripts.ns";
 
-var reinstall = args.includes("--reinstall");
-// var playerPortHackLevel = getPlayerPortHackLevel();;
-var controllerRam = getScriptRam("/scripts/node/controller.script");
-var instanceRam = getScriptRam("/scripts/node/weaken.script");
-var minimumRam = controllerRam + instanceRam;
+export async function main(ns) {
+	var reinstall = ns.args.includes("--reinstall");
+	var controllerRam = ns.getScriptRam("/scripts/node/executor.ns");
+	var instanceRam = ns.getScriptRam("/scripts/node/weaken.script");
+	var minimumRam = controllerRam + instanceRam;
 
-function isHacking(process) {
-	return process.filename == "hack.script";
-}
-
-function install(server, spaces, serverMaxRamParam) {
-	var serverMaxRam = serverMaxRamParam ? serverMaxRamParam : getServerMaxRam(server);
-	installScripts(server);
-	tprint(spaces + "- Installed at " + Math.floor((serverMaxRam - controllerRam) / instanceRam) + " instance threads.");
-}
-
-// Spider through world servers
-spider(function(server, spaces) {
-	var processes = ps(server);
-	var serverMaxRam = getServerMaxRam(server);
-
-	if (processes.some(isHacking) && ! reinstall) {
-		tprint(spaces + "- INFO: Server is already hacking, skipping installation.");
-		return;
+	function isHacking(process) {
+		return process.filename == "hack.ns";
 	}
 
-	if (serverMaxRam < minimumRam) {
-		tprint(spaces + "- INFO: Server does not have enough RAM (" + serverMaxRam + "GB/" + minimumRam + "GB).");
-		return;
+	function install(server, spaces, serverMaxRamParam) {
+		var serverMaxRam = serverMaxRamParam ? serverMaxRamParam : ns.getServerMaxRam(server);
+		installScripts(ns, server);
+		ns.tprint("✔️" + spaces + " - " + server + ": Installed at " + Math.floor((serverMaxRam - controllerRam) / instanceRam) + " instance threads.");
 	}
 
-	install(server, spaces, serverMaxRam);
-});
+	// Spider through world servers
+	spider(ns, function(server, spaces) {
+		var processes = ns.ps(server);
+		var serverMaxRam = ns.getServerMaxRam(server);
 
-// Install on purchased servers
-if (reinstall) {
-	getPurchasedServers().forEach(function (server) {
-		install(server, "");
+		if (processes.some(isHacking) && ! reinstall) {
+			ns.tprint("ℹ️" + spaces + " - " + server + ": Already hacking, skipping installation.");
+			return;
+		}
+
+		if (serverMaxRam < minimumRam) {
+			ns.tprint("⚠️" + spaces + " - " + server + ": Not enough RAM (" + serverMaxRam + "GB/" + minimumRam + "GB).");
+			return;
+		}
+
+		if (! ns.hasRootAccess(server)) {
+			ns.tprint("⚠️" + spaces + " - " + server + ": No root access.");
+			return;
+		}
+
+		install(server, spaces, serverMaxRam);
 	});
-}
 
-tprint("MCP complete.");
+	// Install on purchased servers
+	if (reinstall) {
+		ns.getPurchasedServers().forEach(function (server) {
+			install(server, "");
+		});
+	}
+
+	ns.tprint("MCP complete.");
+}

@@ -1,57 +1,58 @@
 import { getPlayerPortHackLevel } from "/scripts/lib/getPlayerPortHackLevel.ns";
 import { fullNuke } from "/scripts/lib/fullNuke.ns";
 
-export async function main(ns) {
+function skip(server) {
+	return ! skipServers.includes(server);
+}
+
+export function compileTargets(servers) {
 	var purchasedServers = ns.getPurchasedServers();
 	var skipServers = purchasedServers.concat(["home", "darkweb"]);
 	var targets = [];
 	var playerPortHackLevel = getPlayerPortHackLevel(ns);
 
-	function skip(server) {
-		return ! skipServers.includes(server);
+	for (var i = 0; i < servers.length; i++) {
+		var server = servers[i];
+		var playerHackingLevel = ns.getHackingLevel();
+		var serverHackingLevel = ns.getServerRequiredHackingLevel(server);
+		var moneyAvailable = ns.getServerMoneyAvailable(server);
+		var portsRequired = ns.getServerNumPortsRequired(server);
+
+		// Attempt to get root access, if we don't have it already
+		if (ns.hasRootAccess(server) == false && portsRequired <= playerPortHackLevel) {
+			fullNuke(server, ns);
+			ns.tprint("Rooted " + server);
+		}
+
+		if (serverHackingLevel > playerHackingLevel) {
+			ns.tprint(server + " is too hard! (" + serverHackingLevel + " > " + playerHackingLevel + ")");
+		}
+		else if (moneyAvailable == 0) {
+			ns.tprint(server + " has no money.");
+		}
+		else if (portsRequired > playerPortHackLevel) {
+			ns.tprint(server + " requires too many ports! (" + portsRequired + " > " + playerPortHackLevel + ")");
+		}
+		else {
+			ns.tprint(server + " is a valid target. (" + serverHackingLevel + " <= " + playerHackingLevel + ")");
+			targets.push(server);
+		}
+
+		skipServers.push(server);
+
+		var scanned = ns.scan(server).filter(skip);
+		if (scanned.length > 0) {
+			compileTargets(scanned);
+		}
 	}
 
-	function compileTargets(servers) {
-		for (var i = 0; i < servers.length; i++) {
-			var server = servers[i];
-			var playerHackingLevel = ns.getHackingLevel();
-			var serverHackingLevel = ns.getServerRequiredHackingLevel(server);
-			var moneyAvailable = ns.getServerMoneyAvailable(server);
-			var portsRequired = ns.getServerNumPortsRequired(server);
+	var targetsArray = "[" + targets.map(function (target) { return '"' + target + '"'; }).join(',') + "]";
+	ns.write("/scripts/lib/targets.ns", 'export var targets = ' + targetsArray + ';', 'w');
 
-			// Attempt to get root access, if we don't have it already
-			if (ns.hasRootAccess(server) == false && portsRequired <= playerPortHackLevel) {
-				fullNuke(server, ns);
-				ns.tprint("Rooted " + server);
-			}
-
-			if (serverHackingLevel > playerHackingLevel) {
-				ns.tprint(server + " is too hard! (" + serverHackingLevel + " > " + playerHackingLevel + ")");
-			}
-			else if (moneyAvailable == 0) {
-				ns.tprint(server + " has no money.");
-			}
-			else if (portsRequired > playerPortHackLevel) {
-				ns.tprint(server + " requires too many ports! (" + portsRequired + " > " + playerPortHackLevel + ")");
-			}
-			else {
-				ns.tprint(server + " is a valid target. (" + serverHackingLevel + " <= " + playerHackingLevel + ")");
-				targets.push(server);
-			}
-
-			skipServers.push(server);
-
-			var scanned = ns.scan(server).filter(skip);
-			if (scanned.length > 0) {
-				compileTargets(scanned);
-			}
-		}
 	}
 
 	compileTargets(ns.scan().filter(skip));
 
-	var targetsArray = "[" + targets.map(function (target) { return '"' + target + '"'; }).join(',') + "]";
-	ns.write("/scripts/lib/targets.ns", 'export var targets = ' + targetsArray + ';', 'w');
 
 	ns.tprint("Targets compiled:");
 	ns.tprint(targetsArray);
