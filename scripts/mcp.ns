@@ -8,7 +8,7 @@ export async function main(ns) {
 	var minimumRam = controllerRam + instanceRam;
 
 	function isHacking(process) {
-		return process.filename == "hack.ns";
+		return process.filename == "/scripts/node/hack.script";
 	}
 
 	function install(server, spaces, serverMaxRamParam) {

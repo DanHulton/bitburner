@@ -18,6 +18,33 @@ function getTarget(ns, servers) {
 }
 
 /**
+ * Check if the process being examined is weaken, grow, or hack.
+ * 
+ * @param {Object} process - The process to examine.
+ * 
+ * @return {Boolean}
+ */
+function isWorking(process) {
+	return process.filename == "/scripts/node/hack.script"
+		|| process.filename == "/scripts/node/weaken.script"
+		|| process.filename == "/scripts/node/grow.script";
+}
+
+/**
+ * Wait until all grow/weaken/hack processes are complete.
+ * 
+ * @param {NetScript} ns - The Netscript environment.
+ */
+async function waitForFree(ns) {
+	var processes = ns.ps();
+
+	while (processes.some(isWorking)) {
+		await ns.sleep(5000);
+		processes = ns.ps();
+	}
+}
+
+/**
  * Weaken the target server's security.
  *
  * @param {NetScript} ns - The Netscript environment.
@@ -32,11 +59,8 @@ async function runWeaken(ns, target, threads) {
 
 	if (target.securityLevel > target.securityThreshold) {
 		ns.print("Security level (" + ns.nFormat(target.securityLevel, "0,0.0") + ") higher than threshold (" + target.securityThreshold + ").");
-
-		var sleepTime = Math.ceil(ns.getWeakenTime(target.name) + 1) * 1000;
-		ns.print("🐭 Weakening with " + threads + " threads for " + ns.tFormat(sleepTime) + "...");
+		ns.print("🐭 Weakening with " + threads + " threads...");
 		ns.run("/scripts/node/weaken.script", threads, target.name);
-		await ns.sleep(sleepTime);
 
 		return true;
 	}
@@ -59,11 +83,8 @@ async function runGrow(ns, target, threads) {
 
 	if (target.moneyAvailable < target.moneyThreshold) {
 		ns.print("Money available (" + ns.nFormat(target.moneyAvailable, "$0.0a") + ") lower than threshold (" + ns.nFormat(target.moneyThreshold, "$0.0a") + ").");
-
-		var sleepTime = Math.ceil(ns.getGrowTime(target.name) + 1) * 1000;
-		ns.print("🌱 Growing with " + threads + " threads for " + ns.tFormat(sleepTime) + "...");
+		ns.print("🌱 Growing with " + threads + " threads...");
 		ns.run("/scripts/node/grow.script", threads, target.name);
-		await ns.sleep(sleepTime);
 
 		return true;
 	}
@@ -83,11 +104,36 @@ async function runGrow(ns, target, threads) {
 async function runHack(ns, target, maxHackThreads) {
 	var threads = Math.min(maxHackThreads, Math.floor(ns.hackAnalyzeThreads(target.name, target.moneyAvailable * 0.2)));
 	var hackMoney = ns.hackAnalyzePercent(target.name) / 100 * target.moneyAvailable * threads;
-	var sleepTime = Math.ceil(ns.getHackTime(target.name) + 1) * 1000;
 
-	ns.print("🤑 Hacking " + ns.nFormat(hackMoney, "$0.0a") + " with " + threads + " threads for " + ns.tFormat(sleepTime) + "...");
+	ns.print("🤑 Hacking " + ns.nFormat(hackMoney, "$0.0a") + " with " + threads + " threads...");
 	ns.run("/scripts/node/hack.script", threads, target.name);
-	await ns.sleep(sleepTime);
+}
+
+/**
+ * Chooses a task and runs it.
+ * 
+ * @param {NetScript} ns - The Netscript environment.
+ * @param {Array<string>} servers - The collection of servers to pick a target from.  Modified.
+ * @param {string} hostName - The name of the current host being run on.
+ */
+async function runTask(ns, servers, hostName) {
+	var target = getTarget(ns, servers);
+	var freeRam = ns.getServerMaxRam(hostName) - ns.getServerUsedRam(hostName);
+	var maxWeakenThreads = Math.floor(freeRam / 1.75);
+	var maxGrowThreads = Math.floor(freeRam / 1.75);
+	var maxHackThreads = Math.floor(freeRam / 1.7);
+
+	ns.print("Server free RAM: " + freeRam + "GB");
+
+	if (await runWeaken(ns, target, maxWeakenThreads)) {
+		// no-op
+	}
+	else if (await runGrow(ns, target, maxGrowThreads)) {
+		// no-op
+	}
+	else {
+		await runHack(ns, target, maxHackThreads);
+	}
 }
 
 /**
@@ -96,43 +142,14 @@ async function runHack(ns, target, maxHackThreads) {
  * @param {NetScript} ns - The Netscript environment.
  */
 export async function main(ns) {
-
-
-
-
-
-	// while weaken/grow/hack is running
-		// wait 10s
-
-
-
-
-
-
-
 	var hostName = ns.getHostname();
-	var freeRam = ns.getServerMaxRam(hostName) - ns.getServerUsedRam(hostName);
-	var maxWeakenThreads = Math.floor(freeRam / 1.75);
-	var maxGrowThreads = Math.floor(freeRam / 1.75);
-	var maxHackThreads = Math.floor(freeRam / 1.7);
-
-	ns.print("Server free RAM: " + freeRam + "GB");
 
 	while (true) {
 		var copy = [].concat(targets);
 
 		while (copy.length) {
-			var target = getTarget(ns, copy);
-
-			if (await runWeaken(ns, target, maxWeakenThreads)) {
-				// no-op
-			}
-			else if (await runGrow(ns, target, maxGrowThreads)) {
-				// no-op
-			}
-			else {
-				await runHack(ns, target, maxHackThreads);
-			}
+			await waitForFree(ns);
+			await runTask(ns, copy, hostName);
 		}
 	}
 }
