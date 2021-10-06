@@ -1,3 +1,5 @@
+import { installScripts } from "/scripts/lib/installScripts.ns";
+
 export async function main(ns) {
 	if (ns.args.length < 1) {
 		ns.tprint("You must specify argument: TARGET_RAM_SIZE.");
@@ -54,11 +56,7 @@ export async function main(ns) {
 				ns.deleteServer(name);
 				ns.purchaseServer(name, ramTarget);
 
-				ns.scp("/scripts/node/controller.script", name);
-				ns.scp("/scripts/node/grow.script", name);
-				ns.scp("/scripts/node/weaken.script", name);
-				ns.scp("/scripts/node/hack.script", name);
-				ns.exec("/scripts/node/controller.script", name);
+				installScripts(ns, name, true);
 
 				var newThreads = Math.floor(ramTarget / ramRequired);
 				ns.tprint(name + " upgraded to " + ramTarget + "GB (" + newThreads + " threads).");

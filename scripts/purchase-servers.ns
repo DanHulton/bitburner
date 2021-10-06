@@ -1,23 +1,24 @@
-var ram = 32;
-var cost = getPurchasedServerCost(ram);
+import { installScripts } from "/scripts/lib/installScripts.ns";
 
-print("Buying " + ram + "GB servers costing " + nFormat(cost, "$0.0a"));
+export async function main(ns) {
+	var ram = 32;
+	var cost = ns.getPurchasedServerCost(ram);
 
-var i = getPurchasedServers().length;
+	ns.print("Buying " + ram + "GB servers costing " + ns.nFormat(cost, "$0.0a"));
 
-while (i < getPurchasedServerLimit()) {
-	sleep(10 * 1000);
+	var i = ns.getPurchasedServers().length;
 
-    if (getServerMoneyAvailable("home") > cost) {
-        var server = purchaseServer("pserv-" + i, ram);
+	while (i < ns.getPurchasedServerLimit()) {
+		await ns.sleep(1000);
 
-		scp("/scripts/node/controller.script", server);
-		scp("/scripts/node/grow.script", server);
-		scp("/scripts/node/weaken.script", server);
-		scp("/scripts/node/hack.script", server);
-		exec("/scripts/node/controller.script", server);
-        ++i;
-    }
-}
+	    if (ns.getServerMoneyAvailable("home") > cost) {
+	        var server = ns.purchaseServer("pserv-" + i, ram);
 
-tprint("Purchased servers (" + i + ") equal to server limit (" + getPurchasedServerLimit() + ")!");
+	        installScripts(ns, server, true);
+
+	        ++i;
+	    }
+	}
+
+	ns.tprint("Purchased servers (" + i + ") equal to server limit (" + ns.getPurchasedServerLimit() + ")!");
+}	

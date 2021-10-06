@@ -1,12 +1,26 @@
-export function installScripts(ns, server) {
-	ns.killall(server);
-	var scripts = [
-		"/scripts/node/executor.ns",
-		"/scripts/node/grow.script",
-		"/scripts/node/weaken.script",
-		"/scripts/node/hack.script",
-		"/scripts/lib/targets.ns",
-	];
+function isExecuting(ns, server) {
+	var processes = ns.ps(server);
+
+	return processes.some(function(process) { return process.filename == "/scripts/node/executor.script"; });
+}
+
+export function installScripts(ns, server, force = false) {
+	var scripts = [];
+
+	if (force || ! isExecuting(ns, server)) {
+		ns.killall(server);
+		scripts = [
+			"/scripts/node/executor.ns",
+			"/scripts/node/grow.script",
+			"/scripts/node/weaken.script",
+			"/scripts/node/hack.script",
+			"/scripts/lib/targets.ns",
+		];		
+	}
+	else {
+		ns.kill("/scripts/node/executor.ns", server);
+		scripts = ["/scripts/node/targets.ns"];
+	}
 
 	if (! ns.scp(scripts, server) ) {
 		ns.tprint("🚨 Could not scp scripts to " + server + '!!!');
