@@ -51,7 +51,7 @@ export async function main(ns) {
 	compileTargets(ns.scan().filter(skip));
 
 	var targetsArray = "[" + targets.map(function (target) { return '"' + target + '"'; }).join(',') + "]";
-	ns.write("/scripts/lib/targets.ns", 'export var targets = ' + targetsArray + ';', 'w');
+	await ns.write("/scripts/lib/targets.ns", 'export var targets = ' + targetsArray + ';', 'w');
 
 	ns.tprint("Targets compiled:");
 	ns.tprint(targetsArray);
