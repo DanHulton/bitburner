@@ -1,7 +1,8 @@
-export function spider(ns, f, serversParam, depthParam, skipParam) {
+export function spider(ns, f, serversParam, depthParam, skipParam, historyParm) {
 	var skipServers = skipParam ? skipParam : ns.getPurchasedServers().concat(["home", "darkweb"]);
 	var servers = serversParam ? serversParam : ns.scan().filter(function (server) { return ! skipServers.includes(server); });
 	var depth = depthParam ? depthParam : 0;
+	var history = historyParm ? historyParm : [];
 
 	var spaces = "";
 	for (var i = 0; i < depth; i++) {
@@ -11,13 +12,13 @@ export function spider(ns, f, serversParam, depthParam, skipParam) {
 	for (var i = 0; i < servers.length; i++) {
 		var server = servers[i];
 
-		f(server, spaces);
+		f(server, spaces, history);
 
 		skipServers.push(server);
 
 		var scanned = ns.scan(server).filter(function (server) { return ! skipServers.includes(server); });
 		if (scanned.length > 0) {
-			spider(ns, f, scanned, depth + 1, skipServers);
+			spider(ns, f, scanned, depth + 1, skipServers, history.concat([server]));
 		}
 	}
 }

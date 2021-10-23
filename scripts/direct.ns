@@ -1,0 +1,17 @@
+import { spider } from "/scripts/lib/spider.ns";
+
+export async function main(ns) {
+	var target = ns.args[0];
+
+	// Install through world servers
+	spider(ns, function(server, spaces, history) {
+		if (target == server) {
+			for (var i = 0; i < history.length; i++) {
+				ns.connect(history[i]);
+			}
+
+			ns.connect(server);
+			ns.exit();
+		}
+	});
+}
