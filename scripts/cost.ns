@@ -1,0 +1,20 @@
+export async function main(ns) {
+	if (ns.args.length < 1) {
+		ns.tprint("You must specify argument: TARGET_RAM_SIZE.");
+		ns.exit();
+	}
+
+	var serverCost = ns.getPurchasedServerCost(ns.args[0]);
+	var allServerCost = serverCost * 25;
+	var playerMoney = ns.getServerMoneyAvailable("home");
+
+	ns.tprint("Cost to upgrade one server: " + ns.nFormat(serverCost, "$0.0a") + ".");
+	ns.tprint("Cost to upgrade all servers: " + ns.nFormat(allServerCost, "$0.0a") + ".");
+
+	if (playerMoney >= allServerCost) {
+		ns.tprint("✔️ Can afford!");
+	}
+	else {
+		ns.tprint("⚠️ Not yet.");
+	}
+}
