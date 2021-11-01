@@ -1,0 +1,61 @@
+var crimes = [
+  "shoplift",
+  "rob store",
+  "mug",
+  "larceny",
+  "deal drugs",
+  "bond forgery",
+  "traffick arms",
+  "homicide",
+  "grand theft auto",
+  "kidnap",
+  "assassinate",
+  "heist",
+];
+
+/**
+ * Find the crime with the best Expected Value Over Time (evot).
+ *
+ * EVOT is defined as Chance of Success * Money for Success / Time to Commit.
+ * 
+ * @param {NetScript} ns - The Netscript environment.
+ * @param {integer} delay - The delay in between tasks to take into account when calculating evot.
+ * 
+ * @return {string}
+ */
+function findBestCrime(ns, delay = 0) {
+	var bestCrime = "";
+	var bestCrimeEvot = 0;
+
+	var crime = "";
+	var crimeChance = 0;
+	var crimeStats = null;
+	var crimeEvot;
+
+	for (var i = 0; i < crimes.length; i++) {
+		crime = crimes[i];
+		crimeChance = ns.getCrimeChance(crime);
+		crimeStats = ns.getCrimeStats(crime);
+
+		crimeEvot = crimeChance * crimeStats.money / ((crimeStats.time * 1000) + delay);
+
+		if (crimeEvot > bestCrimeEvot) {
+			bestCrime = crime;
+			bestCrimeEvot = crimeEvot;
+		}
+	}
+
+	ns.print("Best crime to commit is " + bestCrime + " with an EVOT of " + ns.nFormat(bestCrimeEvot, "$0.0a") + "/s.");
+
+	return bestCrime;
+}
+
+/**
+ * Commit the crime with the best Expected Value Over Time.
+ * 
+ * @param {NetScript} ns - The Netscript environment.
+ * @param {integer} delay - The delay in between tasks to take into account when calculating evot.
+ */
+export function commitBestCrime(ns, delay = 0) {
+	ns.commitCrime(findBestCrime(ns, delay));
+}

@@ -10,7 +10,7 @@ import { targets } from "/scripts/lib/targets.ns";
  */
 function getTarget(ns, servers) {
 	var idx = Math.floor(Math.random() * servers.length);
-	var target = { name: servers.splice(idx, 1) };
+	var target = { name: servers.splice(idx, 1)[0] };
 	
 	ns.print("\n### New target: " + target.name);
 	
